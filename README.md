@@ -58,4 +58,4 @@ The LSTM model architecture is designed as follows:
 
 ### 6.Results
 
-- **Analysis**: Please check the last cell of analysis.ipynb file to see the line chart of the predictions.
+- **Analysis**: Please check the last cell of data_analytics/analysis/analysis.ipynb file to see the line chart of the predictions.
