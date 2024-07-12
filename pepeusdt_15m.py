@@ -14,7 +14,6 @@ db_name = os.getenv('database')
 db_user = os.getenv('user')
 db_password = os.getenv('password')
 
-
 conn_params = {
     'host': host,
     'database': db_name,
@@ -22,12 +21,19 @@ conn_params = {
     'password': db_password
 }
 
-
 SOCKET = 'wss://stream.binance.com:9443/ws/pepeusdt@kline_15m'
 
+CREATE_LOGS_TABLE_SQL = """
+    CREATE TABLE IF NOT EXISTS {} (
+        id SERIAL PRIMARY KEY,
+        log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        log_level VARCHAR(10),
+        log_message TEXT
+    );
+"""
 
 CREATE_TRADING_DATA_TABLE_SQL = """
-    CREATE TABLE IF NOT EXISTS pepeusdt_15m_test (
+    CREATE TABLE IF NOT EXISTS {} (
         id SERIAL PRIMARY KEY,
         event_type VARCHAR(50),
         event_time BIGINT,
@@ -51,20 +57,11 @@ CREATE_TRADING_DATA_TABLE_SQL = """
     );
 """
 
-CREATE_LOGS_TABLE_SQL = """
-    CREATE TABLE IF NOT EXISTS application_logs_test (
-        id SERIAL PRIMARY KEY,
-        log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        log_level VARCHAR(10),
-        log_message TEXT
-    );
-"""
-
-
 class PostgreSQLHandler(logging.Handler):
-    def __init__(self, conn_params):
+    def __init__(self, conn_params, table_name):
         logging.Handler.__init__(self)
         self.conn_params = conn_params
+        self.table_name = table_name
         self.conn = None
         self.create_logs_table()
 
@@ -72,19 +69,19 @@ class PostgreSQLHandler(logging.Handler):
         try:
             self.conn = psycopg2.connect(**self.conn_params)
             cursor = self.conn.cursor()
-            cursor.execute(CREATE_LOGS_TABLE_SQL)
+            cursor.execute(CREATE_LOGS_TABLE_SQL.format(self.table_name))
             self.conn.commit()
             cursor.close()
-            logging.info("Created application_logs_test table if not exists.")
+            logging.info(f"Created {self.table_name} table if not exists.")
         except Error as e:
             logging.error(f"Error creating logs table: {e}")
 
     def emit(self, record):
         if not self.conn or self.conn.closed:
-            self.create_logs_table()  # Attempt to reconnect if connection is closed
+            self.create_logs_table()  
         log_entry = self.format(record)
-        insert_sql = """
-            INSERT INTO application_logs_test (log_level, log_message)
+        insert_sql = f"""
+            INSERT INTO {self.table_name} (log_level, log_message)
             VALUES (%s, %s)
         """
         try:
@@ -101,11 +98,6 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-
-pg_handler = PostgreSQLHandler(conn_params)
-logger.addHandler(pg_handler)
-
-
 def connect_postgresql():
     try:
         conn = psycopg2.connect(**conn_params)
@@ -115,20 +107,18 @@ def connect_postgresql():
         logger.error(f"Error connecting to PostgreSQL: {e}")
         return None
 
-
-def create_table(conn):
+def create_table(conn, table_name, sql):
     try:
         cursor = conn.cursor()
-        cursor.execute(CREATE_TRADING_DATA_TABLE_SQL)
+        cursor.execute(sql.format(table_name))
         conn.commit()
-        logger.info("Created trading_data table if not exists.")
+        logger.info(f"Created {table_name} table if not exists.")
     except Error as e:
         logger.error(f"Error creating table: {e}")
 
-
-def insert_row(conn, row):
-    sql = """
-        INSERT INTO pepeusdt_15m_test (
+def insert_row(conn, table_name, row):
+    sql = f"""
+        INSERT INTO {table_name} (
             event_type, event_time, symbol, kline_start_time, kline_close_time,
             interval, first_trade_id, last_trade_id, open_price, close_price,
             high_price, low_price, volume, number_of_trades, is_kline_closed,
@@ -144,7 +134,6 @@ def insert_row(conn, row):
     except Error as e:
         logger.error(f"Error inserting row: {e}")
 
-
 def on_open(ws):
     logger.info('WebSocket connected.')
 
@@ -155,19 +144,32 @@ def on_error(ws, error):
     logger.error(f'WebSocket error: {error}')
 
 running = True 
+table_counter = 1  
 
 def on_message(ws, message):
-    global running
+    global running, table_counter
+    
     if not running:
         return 
     
-    
     json_message = json.loads(message)
     logger.debug(json_message)  
-
     
+    # Determine table names with counter suffix
+    log_table_name = f"pepeusdt_15m_{table_counter}log"
+    trading_table_name = f"pepeusdt_15m_{table_counter}"
+    
+    # Create tables if not exists
+    create_table(conn, log_table_name, CREATE_LOGS_TABLE_SQL)
+    create_table(conn, trading_table_name, CREATE_TRADING_DATA_TABLE_SQL)
+    
+    # Insert data into tables
+    insert_row(conn, trading_table_name, get_trading_data_row(json_message))
+    insert_row(conn, log_table_name, get_log_data_row(json_message))
+    
+def get_trading_data_row(json_message):
     kline = json_message['k']
-    row = (
+    return (
         json_message['e'],          # event_type
         json_message['E'],          # event_time
         json_message['s'],          # symbol
@@ -189,9 +191,13 @@ def on_message(ws, message):
         kline['B']                  # ignore
     )
 
-    
-    insert_row(conn, row)
-
+def get_log_data_row(json_message):
+    return (
+        json_message['e'],          # event_type
+        json_message['E'],          # event_time
+        json_message['s'],          # symbol
+        json.dumps(json_message)    # log_message (JSON format)
+    )
 
 def connect_websocket():
     websocket.enableTrace(False)  
@@ -202,20 +208,23 @@ def connect_websocket():
                                 on_error=on_error)
     return ws
 
-
 if __name__ == "__main__":
     
     conn = connect_postgresql()
     if conn:
-        create_table(conn)
         
-       
+        log_table_name = f"pepeusdt_15m_{table_counter}_log"
+        trading_table_name = f"pepeusdt_15m_{table_counter}"
+        create_table(conn, log_table_name, CREATE_LOGS_TABLE_SQL)
+        create_table(conn, trading_table_name, CREATE_TRADING_DATA_TABLE_SQL)
+        
         ws = connect_websocket()
         ws.run_forever()
-
         
         running = False  
         ws.close()       
         conn.close()     
         pg_handler.close()  
         logger.info("Shutdown completed.")
+        
+        table_counter += 1
