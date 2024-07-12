@@ -4,14 +4,30 @@ import logging
 import psycopg2
 from psycopg2 import Error
 from dotenv import load_dotenv
+from datetime import datetime
 import os
 
 load_dotenv()
+
+class Config:
+    def __init__(self):
+        self.host = os.getenv('host')
+        self.db_name = os.getenv('database')
+        self.db_user = os.getenv('user')
+        self.db_password = os.getenv('password')
+
+config = Config()
 
 host = os.getenv('host')
 db_name = os.getenv('database')
 db_user = os.getenv('user')
 db_password = os.getenv('password')
+
+
+symbol = 'btcusdt'
+interval = '1m'
+current_date = datetime.today().strftime('%d_%m_%y_%H_%M')
+table_name = symbol + '_' + interval + '_' + current_date
 
 
 conn_params = {
@@ -21,11 +37,11 @@ conn_params = {
     'password': db_password
 }
 
-SOCKET = 'wss://stream.binance.com:9443/ws/shibusdt@kline_15m'
+SOCKET = f'wss://stream.binance.com:9443/ws/{symbol}@kline_{interval}'
 
 
-CREATE_TRADING_DATA_TABLE_SQL = """
-    CREATE TABLE IF NOT EXISTS shibusdt_15m_test (
+CREATE_TRADING_DATA_TABLE_SQL = f"""
+    CREATE TABLE IF NOT EXISTS {table_name} (
         id SERIAL PRIMARY KEY,
         event_type VARCHAR(50),
         event_time BIGINT,
@@ -49,8 +65,8 @@ CREATE_TRADING_DATA_TABLE_SQL = """
     );
 """
 
-CREATE_LOGS_TABLE_SQL = """
-    CREATE TABLE IF NOT EXISTS application_logs_test (
+CREATE_LOGS_TABLE_SQL = f"""
+    CREATE TABLE IF NOT EXISTS {table_name}_log (
         id SERIAL PRIMARY KEY,
         log_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         log_level VARCHAR(10),
@@ -85,8 +101,8 @@ class PostgreSQLHandler(logging.Handler):
                 print(f"Error reconnecting to PostgreSQL: {e}")
                 return
         log_entry = self.format(record)
-        insert_sql = """
-            INSERT INTO application_logs_test (log_level, log_message)
+        insert_sql = f"""
+            INSERT INTO {table_name}_log (log_level, log_message)
             VALUES (%s, %s)
         """
         try:
@@ -129,8 +145,8 @@ def create_table(conn):
 
 
 def insert_row(conn, row):
-    sql = """
-        INSERT INTO shibusdt_15m_test (
+    sql = f"""
+        INSERT INTO {table_name} (
             event_type, event_time, symbol, kline_start_time, kline_close_time,
             interval, first_trade_id, last_trade_id, open_price, close_price,
             high_price, low_price, volume, number_of_trades, is_kline_closed,
