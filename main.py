@@ -24,8 +24,8 @@ db_user = os.getenv('user')
 db_password = os.getenv('password')
 
 
-symbol = 'btcusdt'
-interval = '1m'
+symbol = 'pepeusdt'
+interval = '5m'
 current_date = datetime.today().strftime('%d_%m_%y_%H_%M')
 table_name = symbol + '_' + interval + '_' + current_date
 
