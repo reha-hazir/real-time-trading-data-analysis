@@ -1,4 +1,5 @@
 .env
 .venv/
 .vscode/
-pepeusdt_15m copy.py
+statistics.ipynb
+market_streams/
