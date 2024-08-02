@@ -2,6 +2,8 @@ import psycopg2
 import pandas as pd
 from dotenv import load_dotenv
 import os
+import regex as re
+from sqlalchemy import create_engine
 
 load_dotenv()
 
@@ -21,7 +23,9 @@ conn_details = {
 conn = psycopg2.connect(**conn_details)
 
 
-table_names = ['adausdt_5m_13_07_24_22_28']
+table_names = [
+    'btcusdt_5malone'
+    ]
 
 for i in table_names:
     
@@ -36,10 +40,9 @@ for i in table_names:
             'id', 'event_type', 'event_time', 'symbol', 'kline_start_time', 'kline_close_time', 
             'interval', 'first_trade_id', 'last_trade_id', 'open_price', 'close_price', 
             'high_price', 'low_price', 'volume', 'number_of_trades', 'is_kline_closed',
-            'quote_assest_volume', 'take_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore']
+            'quote_assest_volume', 'take_buy_base_asset_volume', 'taker_buy_quote_asset_volume', 'ignore', 'latency']
         df = pd.DataFrame(result, columns=columns)
 
-    
     df.to_csv(f"data_analytics/datasets/{i}.csv", index=False)
 
 
