@@ -6,7 +6,7 @@ import csv
 import os
 from datetime import datetime
 
-symbol = 'dogeusdt'
+symbol = 'pepeusdt'
 interval = '1m'
 current_date = datetime.today().strftime('%d-%m-%y')
 rsi_window = 14
