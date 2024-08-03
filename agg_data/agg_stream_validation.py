@@ -4,7 +4,7 @@ import json
 import csv
 from datetime import datetime
 
-csv_filename = 'trades_log.csv'
+csv_filename = 'trade_socket.csv'
 csv_header = ['Timestamp', 'Buy', 'Sell', 'Quantity', 'Price']
 
 async def binance_websocket():

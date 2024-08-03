@@ -18,9 +18,10 @@ trade_data = {"buy": 0, "sell": 0, "count": 0, "price_sum": 0, "quantity_sum": 0
 current_minute = None
 last_price = None
 kline_closed_event = asyncio.Event()
+data_lock = asyncio.Lock()  
 
 async def kline_websocket():
-    global current_minute, trade_data, last_price
+    global current_minute, last_price
 
     async with websockets.connect(KLINE_SOCKET) as websocket:
         async for message in websocket:
@@ -38,13 +39,26 @@ async def kline_websocket():
             if kline_closed:
                 current_minute = event_time // 1000 // 60
 
-                if last_price is not None:
-                
-                    await print_aggregated_data(current_minute, last_price)
+                async with data_lock:
+                    buy_volume = trade_data['buy']
+                    sell_volume = trade_data['sell']
+                    trade_count = trade_data['count']
+                    average_price = (trade_data['price_sum'] / trade_data['quantity_sum']) if trade_data['quantity_sum'] > 0 else 0
 
-            
+                buy_usdt = buy_volume * average_price
+                sell_usdt = sell_volume * average_price
+                total_volume_btc = buy_volume + sell_volume
+
+                # Determine volume dominance
+                if sell_volume > buy_volume:
+                    volume_dominance = -1
+                elif buy_volume > sell_volume:
+                    volume_dominance = 1
+                else:
+                    volume_dominance = 0
+
                 log_message = (
-                    f" \n -Date: {current_date}"
+                    f"\n -Date: {current_date}"
                     f" -Time: {event_time}"
                     f" -Open Price: {open_price:.8f}"
                     f" -Current Price: {current_price:.8f}"
@@ -52,27 +66,22 @@ async def kline_websocket():
                     f" -Low Price: {low_price:.8f}"
                     f" -Volume: {volume:.2f}"
                     f" -Trades: {number_of_trades}"
-                    f" -Candle Closed: {kline_closed}"
-                    f" -Buy: {trade_data['buy']:.2f}"
-                    f" -Sell: {trade_data['sell']:.2f}"
-                    f" -USDT Buy: {trade_data['buy'] * last_price if last_price else 0:.2f}"
-                    f" -USDT Sell: {trade_data['sell'] * last_price if last_price else 0:.2f}"
-                    f" -Total Volume: {trade_data['buy'] + trade_data['sell']:.2f}"
-                    f" -Number of Trades: {trade_data['count']}"
+                    f" -Buy: {buy_volume:.2f}"
+                    f" -Sell: {sell_volume:.2f}"
+                    f" -USDT Buy: {buy_usdt:.2f}"
+                    f" -USDT Sell: {sell_usdt:.2f}"
+                    f" -Total Volume: {total_volume_btc:.2f}"
+                    f" -Number of Trades: {trade_count}"
+                    f" -Average Price: {average_price:.8f}"
+                    f" -Volume Dominance: {volume_dominance}"
                 )
-
-                # Comparison of buy and sell volumes
-                if trade_data['sell'] > trade_data['buy']:
-                    log_message += " -Volume Orientation: Sell volume is greater than Buy volume: -1"
-                elif trade_data['buy'] > trade_data['sell']:
-                    log_message += " -Volume Orientation: Buy volume is greater than Sell volume: 1"
-                else:
-                    log_message += " -Volume Orientation: Buy volume equals Sell volume: 0"
 
                 logger.info(log_message)
 
-                # Reset trade data for the next kline period
-                trade_data = {"buy": 0, "sell": 0, "count": 0, "price_sum": 0, "quantity_sum": 0}
+                async with data_lock:
+                    trade_data.clear()
+                    trade_data.update({"buy": 0, "sell": 0, "count": 0, "price_sum": 0, "quantity_sum": 0})
+                
                 kline_closed_event.set()
 
 async def trade_websocket():
@@ -86,9 +95,9 @@ async def trade_websocket():
                 trade_time = trade["T"]
                 price_usdt = float(trade["p"])
                 quantity = float(trade["q"])
-                is_sell = trade["m"]  # m: True = sell, False = buy
-
-                if kline_closed_event.is_set():
+                is_sell = trade["m"]
+                
+                async with data_lock:
                     if is_sell:
                         trade_data["sell"] += quantity
                     else:
@@ -101,41 +110,6 @@ async def trade_websocket():
 
         except (websockets.ConnectionClosedError, Exception) as e:
             logger.error(f"Connection closed or error: {e}")
-
-async def print_aggregated_data(minute_timestamp, price_btc_usdt):
-    data = trade_data
-
-    buy_volume = data['buy']
-    sell_volume = data['sell']
-    trade_count = data['count']
-
-    # Calculate average price for the minute
-    if data['quantity_sum'] > 0:
-        average_price = data['price_sum'] / data['quantity_sum']
-    else:
-        average_price = 0
-
-    buy_usdt = buy_volume * average_price
-    sell_usdt = sell_volume * average_price
-    total_volume_btc = buy_volume + sell_volume
-    total_volume_usdt = total_volume_btc * average_price
-
-    logger.info(f"Minute: {datetime.utcfromtimestamp(minute_timestamp * 60)}")
-    logger.info(f"   Average Price: {average_price:.8f}")
-    logger.info(f"   Buy: {buy_volume:.2f} BTC (Equivalent USDT: {buy_usdt:.2f})")
-    logger.info(f"   Sell: {sell_volume:.2f} BTC (Equivalent USDT: {sell_usdt:.2f})")
-    logger.info(f"   Total Volume: {total_volume_btc:.2f} BTC (Equivalent USDT: {total_volume_usdt:.2f})")
-    logger.info(f"   Number of Trades: {trade_count}")
-
-    # Comparison of buy and sell volumes
-    if sell_volume > buy_volume:
-        logger.info("Sell volume is greater than Buy volume: -1")
-    elif buy_volume > sell_volume:
-        logger.info("Buy volume is greater than Sell volume: 1")
-    else:
-        logger.info("Buy volume equals Sell volume: 0")
-
-    logger.info("-----------------------------------")
 
 async def main():
     await asyncio.gather(kline_websocket(), trade_websocket())

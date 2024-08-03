@@ -11,7 +11,7 @@ last_price = None
 async def binance_websocket():
     global current_minute, last_price
 
-    uri = "wss://stream.binance.com:9443/ws/pepeusdt@trade"
+    uri = "wss://stream.binance.com:9443/ws/btcusdt@trade"
 
     async with websockets.connect(uri) as websocket:
         try:
@@ -48,7 +48,6 @@ async def binance_websocket():
         except (websockets.ConnectionClosedError, Exception) as e:
             print(f"Connection closed or error: {e}")
         finally:
-            # Print aggregated data for the last minute
             if current_minute is not None:
                 await print_aggregated_data(current_minute, last_price)
 

@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 running = True
-csv_file = 'trading_data.csv'
+csv_file = 'kline_socket.csv'
 
 def on_open(ws):
     logger.info('WebSocket connected.')
