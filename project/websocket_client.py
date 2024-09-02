@@ -4,7 +4,6 @@ import json
 import logging
 from datetime import datetime
 
-# Correct the logging configuration
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
@@ -65,7 +64,7 @@ class WebSocketHandler:
                     sell_usdt = sell_volume * average_price
                     total_volume_btc = buy_volume + sell_volume
 
-                    # Determine volume dominance
+                   
                     if sell_volume > buy_volume:
                         volume_dominance = -1
                     elif buy_volume > sell_volume:

@@ -14,10 +14,9 @@ async def kline_callback(data):
 async def main():
     ws_handler = WebSocketHandler(symbol, interval)
     
-    # Wait for the first kline_closed event
+   
     await ws_handler.wait_for_initial_kline_closed()
     
-    # Once the first kline_closed event is received, start other WebSocket activities
     await asyncio.gather(
         ws_handler.kline_websocket(kline_callback),
         ws_handler.trade_websocket()
