@@ -61,7 +61,7 @@ async def kline_websocket():
                     f"\n -Date: {current_date}"
                     f" -Time: {event_time}"
                     f" -Open Price: {open_price:.8f}"
-                    f" -Current Price: {current_price:.8f}"
+                    f" -Close Price: {current_price:.8f}"
                     f" -High Price: {high_price:.8f}"
                     f" -Low Price: {low_price:.8f}"
                     f" -Volume: {volume:.2f}"
