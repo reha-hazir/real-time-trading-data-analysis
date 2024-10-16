@@ -5,7 +5,7 @@ import csv
 import os
 from datetime import datetime
 
-symbol = 'btcusdt'
+symbol = 'pepeusdt'
 interval = '1m'
 current_date = datetime.today().strftime('%d-%m-%y')
 SOCKET = f'wss://stream.binance.com:9443/ws/{symbol}@kline_{interval}'
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 running = True
-csv_file = 'kline_socket_btcusdt_validation_trade_id.csv'
+csv_file = 'kline_socket_pepeusdt_validation.csv'
 
 def on_open(ws):
     logger.info('WebSocket connected.')
@@ -33,7 +33,7 @@ def write_to_csv(data):
     with open(csv_file, mode='a', newline='') as file:
         writer = csv.writer(file)
         if not file_exists:
-            writer.writerow(["Date", "Time", "Open Price", "High Price", "Low Price", "Close Price", "Volume", "Number of Trades", "first_trade_id", "last_trade_id", "quote_asset_volume", "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "kline_closed"])
+            writer.writerow(["date", "time", "open_price", "high_price", "low_price", "close_price", "volume", "number_of_trades", "first_trade_id", "last_trade_id", "quote_asset_volume", "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume", "kline_closed"])
         writer.writerow(data)
 
 def on_message(ws, message):

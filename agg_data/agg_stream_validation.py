@@ -4,11 +4,11 @@ import json
 import csv
 from datetime import datetime
 
-csv_filename = 'trade_socket_btcusdt_validation_trade_id.csv'
-csv_header = ['Timestamp', 'Buy', 'Sell', 'Quantity', 'Price', 'trade_id']
+csv_filename = 'trade_socket_pepeusdt_validation.csv'
+csv_header = ['timestamp', 'buy', 'sell', 'quantity', 'price', 'trade_id']
 
 async def binance_websocket():
-    uri = "wss://stream.binance.com:9443/ws/btcusdt@trade"
+    uri = "wss://stream.binance.com:9443/ws/pepeusdt@trade"
 
     async with websockets.connect(uri) as websocket:
         with open(csv_filename, mode='w', newline='') as file:
