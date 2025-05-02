@@ -2,6 +2,12 @@
 
 This repository contains an LSTM (Long Short-Term Memory) model implemented in Python using TensorFlow and Keras for predicting cryptocurrency prices. The model utilizes historical price data to forecast future price movements.
 
+---
+
+👉 **[View the idea (HTML)](https://reha-hazir.github.io/real-time-trading-data-analysis/analysis.html)**
+
+---
+
 ## Overview
 
 The LSTM model is a type of recurrent neural network (RNN) that is well-suited for sequence prediction tasks, such as time series forecasting. In this case, I use it to predict cryptocurrency prices based on historical data of various features.
@@ -59,3 +65,9 @@ The LSTM model architecture is designed as follows:
 ### 6.Results
 
 - **Analysis**: Please check the last cell of data_analytics/analysis/analysis.ipynb file to see the line chart of the predictions.
+
+---
+
+👉 **[View the idea (HTML)](https://reha-hazir.github.io/real-time-trading-data-analysis/analysis.html)**
+
+---
